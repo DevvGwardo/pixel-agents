@@ -18,7 +18,7 @@ import {
 const READING_TOOLS = new Set([
   'Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch',
   // OpenClaw tools that are read-oriented
-  'browser', 'sessions',
+  'browser', 'web_fetch', 'sessions',
 ])
 
 export function isReadingTool(tool: string | null): boolean {

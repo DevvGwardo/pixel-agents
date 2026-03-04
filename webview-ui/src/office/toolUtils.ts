@@ -20,6 +20,9 @@ export const STATUS_TO_TOOL: Record<string, string> = {
   'Using Discord': 'discord',
   'Using Slack': 'slack',
   'Managing sessions': 'sessions',
+  'Using web_fetch': 'web_fetch',
+  'Using exec': 'exec',
+  'Using browser': 'browser',
 }
 
 export function extractToolName(status: string): string | null {

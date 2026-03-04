@@ -62,7 +62,7 @@ export async function launchNewTerminal(
 	terminal.show();
 
 	const sessionId = crypto.randomUUID();
-	terminal.sendText(`openclaw chat --session ${sessionId}`);
+	terminal.sendText(`~/.openclaw/bin/openclaw tui --session ${sessionId}`);
 
 	const projectDir = getProjectDirPath(cwd);
 	if (!projectDir) {
