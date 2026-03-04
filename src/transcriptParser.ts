@@ -121,7 +121,7 @@ export function processTranscriptLine(
 	webview: vscode.Webview | undefined,
 ): void {
 	const agent = agents.get(agentId);
-	if (!agent) return;
+	if (!agent) {return;}
 	try {
 		const record = JSON.parse(line);
 		const role = resolveRole(record);
@@ -277,13 +277,13 @@ function processProgressRecord(
 	webview: vscode.Webview | undefined,
 ): void {
 	const agent = agents.get(agentId);
-	if (!agent) return;
+	if (!agent) {return;}
 
 	const parentToolId = record.parentToolUseID as string | undefined;
-	if (!parentToolId) return;
+	if (!parentToolId) {return;}
 
 	const data = record.data as Record<string, unknown> | undefined;
-	if (!data) return;
+	if (!data) {return;}
 
 	// bash_progress / mcp_progress: tool is actively executing, not stuck on permission.
 	const dataType = data.type as string | undefined;
@@ -295,15 +295,15 @@ function processProgressRecord(
 	}
 
 	// Verify parent is an active Task tool (agent_progress handling)
-	if (agent.activeToolNames.get(parentToolId) !== 'Task') return;
+	if (agent.activeToolNames.get(parentToolId) !== 'Task') {return;}
 
 	const msg = data.message as Record<string, unknown> | undefined;
-	if (!msg) return;
+	if (!msg) {return;}
 
 	const msgType = msg.type as string;
 	const innerMsg = msg.message as Record<string, unknown> | undefined;
 	const content = innerMsg?.content;
-	if (!Array.isArray(content)) return;
+	if (!Array.isArray(content)) {return;}
 
 	if (msgType === 'assistant') {
 		const subToolCalls = extractToolCalls(content);
@@ -374,7 +374,7 @@ function processProgressRecord(
 					break;
 				}
 			}
-			if (stillHasNonExempt) break;
+			if (stillHasNonExempt) {break;}
 		}
 		if (stillHasNonExempt) {
 			startPermissionTimer(agentId, agents, permissionTimers, PERMISSION_EXEMPT_TOOLS, webview);

@@ -248,7 +248,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
 					filters: { 'JSON Files': ['json'] },
 					canSelectMany: false,
 				});
-				if (!uris || uris.length === 0) return;
+				if (!uris || uris.length === 0) {return;}
 				try {
 					const raw = fs.readFileSync(uris[0].fsPath, 'utf-8');
 					const imported = JSON.parse(raw) as Record<string, unknown>;
@@ -268,7 +268,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
 
 		vscode.window.onDidChangeActiveTerminal((terminal) => {
 			this.activeAgentId.current = null;
-			if (!terminal) return;
+			if (!terminal) {return;}
 			for (const [id, agent] of this.agents) {
 				if (agent.terminalRef === terminal) {
 					this.activeAgentId.current = id;
@@ -314,7 +314,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	private startLayoutWatcher(): void {
-		if (this.layoutWatcher) return;
+		if (this.layoutWatcher) {return;}
 		this.layoutWatcher = watchLayoutFile((layout) => {
 			console.log('[Pixel Agents] External layout change — pushing to webview');
 			this.webview?.postMessage({ type: 'layoutLoaded', layout });
