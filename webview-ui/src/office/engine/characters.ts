@@ -15,7 +15,11 @@ import {
 } from '../../constants.js'
 
 /** Tools that show reading animation instead of typing */
-const READING_TOOLS = new Set(['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch'])
+const READING_TOOLS = new Set([
+  'Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch',
+  // OpenClaw tools that are read-oriented
+  'browser', 'sessions',
+])
 
 export function isReadingTool(tool: string | null): boolean {
   if (!tool) return false

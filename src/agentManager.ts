@@ -8,13 +8,31 @@ import { startFileWatching, readNewLines, ensureProjectScan } from './fileWatche
 import { JSONL_POLL_INTERVAL_MS, TERMINAL_NAME_PREFIX, WORKSPACE_KEY_AGENTS, WORKSPACE_KEY_AGENT_SEATS } from './constants.js';
 import { migrateAndLoadLayout } from './layoutPersistence.js';
 
-export function getProjectDirPath(cwd?: string): string | null {
-	const workspacePath = cwd || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-	if (!workspacePath) return null;
-	const dirName = workspacePath.replace(/[^a-zA-Z0-9-]/g, '-');
-	const projectDir = path.join(os.homedir(), '.claude', 'projects', dirName);
-	console.log(`[Pixel Agents] Project dir: ${workspacePath} → ${dirName}`);
-	return projectDir;
+/**
+ * Discover the OpenClaw agent sessions directory.
+ * OpenClaw stores transcripts at: ~/.openclaw/agents/<agentId>/sessions/<session>.jsonl
+ * We find the first (or only) agent directory and return its sessions path.
+ */
+export function getProjectDirPath(_cwd?: string): string | null {
+	const agentsDir = path.join(os.homedir(), '.openclaw', 'agents');
+	try {
+		const agents = fs.readdirSync(agentsDir).filter(f => {
+			try {
+				return fs.statSync(path.join(agentsDir, f)).isDirectory();
+			} catch { return false; }
+		});
+		if (agents.length === 0) {
+			console.log(`[Pixel Agents] No OpenClaw agents found in ${agentsDir}`);
+			return null;
+		}
+		// Use first agent found (most setups have one default agent)
+		const sessionsDir = path.join(agentsDir, agents[0], 'sessions');
+		console.log(`[Pixel Agents] OpenClaw sessions dir: ${sessionsDir}`);
+		return sessionsDir;
+	} catch {
+		console.log(`[Pixel Agents] OpenClaw agents dir not found: ${agentsDir}`);
+		return null;
+	}
 }
 
 export async function launchNewTerminal(
@@ -44,7 +62,7 @@ export async function launchNewTerminal(
 	terminal.show();
 
 	const sessionId = crypto.randomUUID();
-	terminal.sendText(`claude --session-id ${sessionId}`);
+	terminal.sendText(`openclaw chat --session ${sessionId}`);
 
 	const projectDir = getProjectDirPath(cwd);
 	if (!projectDir) {
@@ -207,7 +225,7 @@ export function restoreAgents(
 		console.log(`[Pixel Agents] Restored agent ${p.id} → terminal "${p.terminalName}"`);
 
 		if (p.id > maxId) maxId = p.id;
-		// Extract terminal index from name like "Claude Code #3"
+		// Extract terminal index from name like "OpenClaw #3"
 		const match = p.terminalName.match(/#(\d+)$/);
 		if (match) {
 			const idx = parseInt(match[1], 10);

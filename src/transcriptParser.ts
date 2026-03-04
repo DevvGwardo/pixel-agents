@@ -20,6 +20,7 @@ export const PERMISSION_EXEMPT_TOOLS = new Set(['Task', 'AskUserQuestion']);
 export function formatToolStatus(toolName: string, input: Record<string, unknown>): string {
 	const base = (p: unknown) => typeof p === 'string' ? path.basename(p) : '';
 	switch (toolName) {
+		// Claude Code tools
 		case 'Read': return `Reading ${base(input.file_path)}`;
 		case 'Edit': return `Editing ${base(input.file_path)}`;
 		case 'Write': return `Writing ${base(input.file_path)}`;
@@ -38,6 +39,18 @@ export function formatToolStatus(toolName: string, input: Record<string, unknown
 		case 'AskUserQuestion': return 'Waiting for your answer';
 		case 'EnterPlanMode': return 'Planning';
 		case 'NotebookEdit': return `Editing notebook`;
+		// OpenClaw tools
+		case 'exec': {
+			const cmd = (input.command as string) || '';
+			return `Running: ${cmd.length > BASH_COMMAND_DISPLAY_MAX_LENGTH ? cmd.slice(0, BASH_COMMAND_DISPLAY_MAX_LENGTH) + '\u2026' : cmd}`;
+		}
+		case 'browser': return 'Browsing web';
+		case 'canvas': return 'Drawing on canvas';
+		case 'nodes': return 'Working with nodes';
+		case 'cron': return 'Scheduling task';
+		case 'discord': return 'Using Discord';
+		case 'slack': return 'Using Slack';
+		case 'sessions': return 'Managing sessions';
 		default: return `Using ${toolName}`;
 	}
 }
@@ -55,7 +68,10 @@ export function processTranscriptLine(
 	try {
 		const record = JSON.parse(line);
 
-		if (record.type === 'assistant' && Array.isArray(record.message?.content)) {
+		// Normalize: OpenClaw uses record.message.role, Claude Code uses record.type
+		const recordType = record.type || record.message?.role;
+
+		if (recordType === 'assistant' && Array.isArray(record.message?.content)) {
 			const blocks = record.message.content as Array<{
 				type: string; id?: string; name?: string; input?: Record<string, unknown>;
 			}>;
@@ -96,9 +112,38 @@ export function processTranscriptLine(
 				// if no new JSONL data arrives within TEXT_IDLE_DELAY_MS, mark as waiting.
 				startWaitingTimer(agentId, TEXT_IDLE_DELAY_MS, agents, waitingTimers, webview);
 			}
-		} else if (record.type === 'progress') {
+		} else if (recordType === 'progress') {
 			processProgressRecord(agentId, record, agents, waitingTimers, permissionTimers, webview);
-		} else if (record.type === 'user') {
+		} else if (recordType === 'toolResult') {
+			// OpenClaw-style: toolResult is a separate record with tool_use_id at top level
+			const toolUseId = record.message?.tool_use_id || record.tool_use_id;
+			if (toolUseId) {
+				console.log(`[Pixel Agents] Agent ${agentId} tool done (OpenClaw): ${toolUseId}`);
+				const completedToolId = toolUseId;
+				if (agent.activeToolNames.get(completedToolId) === 'Task') {
+					agent.activeSubagentToolIds.delete(completedToolId);
+					agent.activeSubagentToolNames.delete(completedToolId);
+					webview?.postMessage({
+						type: 'subagentClear',
+						id: agentId,
+						parentToolId: completedToolId,
+					});
+				}
+				agent.activeToolIds.delete(completedToolId);
+				agent.activeToolStatuses.delete(completedToolId);
+				agent.activeToolNames.delete(completedToolId);
+				setTimeout(() => {
+					webview?.postMessage({
+						type: 'agentToolDone',
+						id: agentId,
+						toolId: completedToolId,
+					});
+				}, TOOL_DONE_DELAY_MS);
+				if (agent.activeToolIds.size === 0) {
+					agent.hadToolsInTurn = false;
+				}
+			}
+		} else if (recordType === 'user') {
 			const content = record.message?.content;
 			if (Array.isArray(content)) {
 				const blocks = content as Array<{ type: string; tool_use_id?: string }>;
@@ -148,7 +193,10 @@ export function processTranscriptLine(
 				clearAgentActivity(agent, agentId, permissionTimers, webview);
 				agent.hadToolsInTurn = false;
 			}
-		} else if (record.type === 'system' && record.subtype === 'turn_duration') {
+		} else if ((recordType === 'system' && record.subtype === 'turn_duration') ||
+				   (recordType === 'system' && record.subtype === 'turn_end')) {
+			// turn_duration = Claude Code turn-end signal
+			// turn_end = OpenClaw turn-end signal (if available)
 			cancelWaitingTimer(agentId, waitingTimers);
 			cancelPermissionTimer(agentId, permissionTimers);
 

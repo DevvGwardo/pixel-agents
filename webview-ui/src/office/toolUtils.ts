@@ -1,14 +1,25 @@
 /** Map status prefixes back to tool names for animation selection */
 export const STATUS_TO_TOOL: Record<string, string> = {
+  // Claude Code tools
   'Reading': 'Read',
-  'Searching': 'Grep',
+  'Searching code': 'Grep',
+  'Searching files': 'Glob',
   'Globbing': 'Glob',
   'Fetching': 'WebFetch',
   'Searching web': 'WebSearch',
+  'Searching the web': 'WebSearch',
   'Writing': 'Write',
   'Editing': 'Edit',
   'Running': 'Bash',
   'Task': 'Task',
+  // OpenClaw tools
+  'Browsing': 'browser',
+  'Drawing': 'canvas',
+  'Working with nodes': 'nodes',
+  'Scheduling': 'cron',
+  'Using Discord': 'discord',
+  'Using Slack': 'slack',
+  'Managing sessions': 'sessions',
 }
 
 export function extractToolName(status: string): string | null {
